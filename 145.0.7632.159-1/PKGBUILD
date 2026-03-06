@@ -1,0 +1,48 @@
+# Maintainer: Erik <https://github.com/3monthsfree>
+# Ungoogled Chromium - Pre-built binary optimized for Intel 12th Gen (Alder Lake)
+# Built on: Acer Nitro 5 AN515-58, i9-12900H, RTX 4060 Max-Q, CachyOS (x86_64-v3)
+# Compiler flags: -march=alderlake, AVX2, AVX-512
+# Requires: Intel 12th Gen or compatible (Alder Lake / x86_64-v3 minimum)
+
+pkgname=ungoogled-chromium-alderlake-bin
+pkgver=145.0.7632.159
+pkgrel=1
+pkgdesc="A lightweight approach to removing Google web services from Chromium - pre-built for Intel 12th Gen Alder Lake (x86_64-v3)"
+arch=('x86_64')
+url="https://github.com/3monthsfree/ungoogled-chromium-alderlake-bin"
+license=('BSD')
+provides=('chromium' "ungoogled-chromium=${pkgver}")
+conflicts=('chromium' 'ungoogled-chromium')
+depends=(
+    'alsa-lib'
+    'gtk3'
+    'libcups'
+    'libdrm'
+    'libxcomposite'
+    'libxdamage'
+    'libxfixes'
+    'libxkbcommon'
+    'libxrandr'
+    'mesa'
+    'nss'
+    'pango'
+    'pipewire'
+    'xcb-proto'
+    'xdg-utils'
+)
+optdepends=(
+    'kdialog: for file dialogs in KDE'
+    'qt5-base: for file dialogs in Qt apps'
+    'ttf-liberation: sans-serif and serif fonts'
+    'xdg-desktop-portal: for screen sharing in Wayland'
+)
+
+_github_user="3monthsfree"
+source=("${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst::https://github.com/${_github_user}/ungoogled-chromium-alderlake-bin/releases/download/${pkgver}-${pkgrel}/${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst")
+sha256sums=('SKIP')  # Replace with actual sha256sum after build
+
+package() {
+    # The .pkg.tar.zst is already a pacman package — extract into pkgdir
+    cd "${srcdir}"
+    bsdtar -xf "${pkgname}-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst" -C "${pkgdir}"
+}

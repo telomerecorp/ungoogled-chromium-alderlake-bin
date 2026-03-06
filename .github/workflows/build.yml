@@ -57,7 +57,7 @@ jobs:
 
       - name: Inject x86_64-v3 compile flags
         run: |
-          sed -i '/^build()/a\  CFLAGS="${CFLAGS} -march=x86_64-v3"\n  CXXFLAGS="${CXXFLAGS} -march=x86_64-v3"' /home/builder/build/PKGBUILD
+          sed -i '/^build()/a\  CFLAGS="${CFLAGS} -march=x86-64-v3"\n  CXXFLAGS="${CXXFLAGS} -march=x86-64-v3"' /home/builder/build/PKGBUILD
 
       - name: Build package
         run: |

@@ -55,9 +55,10 @@ jobs:
           sudo -u builder git clone https://aur.archlinux.org/ungoogled-chromium.git /home/builder/build
           chown -R builder:builder /home/builder/build
 
-      - name: Inject x86_64-v3 compile flags
+      - name: Set x86-64-v3 compile flags
         run: |
-          sed -i '/^build()/a\  CFLAGS="${CFLAGS} -march=x86-64-v3"\n  CXXFLAGS="${CXXFLAGS} -march=x86-64-v3"' /home/builder/build/PKGBUILD
+          sed -i 's/-march=x86-64 /-march=x86-64-v3 /g' /etc/makepkg.conf
+          sed -i 's/-mtune=generic//g' /etc/makepkg.conf
 
       - name: Build package
         run: |

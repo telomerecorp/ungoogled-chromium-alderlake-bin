@@ -1,0 +1,79 @@
+name: Build Ungoogled Chromium
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 6am UTC
+  workflow_dispatch:
+
+jobs:
+  check-version:
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Get latest ungoogled-chromium version
+        id: version
+        run: |
+          LATEST=$(curl -s https://api.github.com/repos/ungoogled-software/ungoogled-chromium/releases/latest | jq -r '.tag_name')
+          echo "version=$LATEST" >> $GITHUB_OUTPUT
+
+      - name: Check if already built
+        id: check
+        run: |
+          BUILT=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases | jq -r '.[].tag_name' | grep "^${{ steps.version.outputs.version }}" || true)
+          if [ -n "$BUILT" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: check-version
+    if: needs.check-version.outputs.skip == 'false'
+    runs-on: blacksmith-32vcpu-ubuntu-2204
+    timeout-minutes: 480
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Arch build environment
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel git curl jq sudo
+
+      - name: Create build user (makepkg refuses to run as root)
+        run: |
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - name: Clone ungoogled-chromium AUR package
+        run: |
+          sudo -u builder git clone https://aur.archlinux.org/ungoogled-chromium.git /home/builder/build
+          chown -R builder:builder /home/builder/build
+
+      - name: Inject x86_64-v3 compile flags
+        run: |
+          sed -i '/^build()/a\  CFLAGS="${CFLAGS} -march=x86_64-v3"\n  CXXFLAGS="${CXXFLAGS} -march=x86_64-v3"' /home/builder/build/PKGBUILD
+
+      - name: Build package
+        run: |
+          cd /home/builder/build
+          sudo -u builder makepkg -s --noconfirm
+
+      - name: Upload release
+        run: |
+          VERSION="${{ needs.check-version.outputs.version }}"
+          PKG=$(ls /home/builder/build/*.pkg.tar.zst | head -1)
+          curl -s https://api.github.com/repos/${{ github.repository }}/releases \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -d "{\"tag_name\":\"${VERSION}\",\"name\":\"${VERSION} x86_64-v3\",\"body\":\"Automated build with x86_64-v3 (AVX2) optimizations.\"}" \
+            -o release.json
+          UPLOAD_URL=$(jq -r '.upload_url' release.json | sed 's/{.*//')
+          curl -s "${UPLOAD_URL}?name=$(basename $PKG)" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"$PKG"
